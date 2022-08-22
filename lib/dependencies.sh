@@ -152,6 +152,31 @@ pnpm_node_modules() {
   monitor "pnpm-install" pnpm install --prod="$production" --frozen-lockfile
 }
 
+pnpm_prune_devdependencies() {
+  local build_dir=${1:-}
+  echo "Pruning node modules (pnpm-lock.yaml)"
+  cd "$build_dir" || return
+
+  if [ "$NODE_ENV" == "test" ]; then
+    echo "Skipping because NODE_ENV is 'test'"
+    meta_set "skipped-prune" "true"
+    return 0
+  elif [ "$NODE_ENV" != "production" ]; then
+    echo "Skipping because NODE_ENV is not 'production'"
+    meta_set "skipped-prune" "true"
+    return 0
+  elif [ -n "$PNPM_PRODUCTION" ]; then
+    echo "Skipping because PNPM_PRODUCTION is '$PNPM_PRODUCTION'"
+    meta_set "skipped-prune" "true"
+    return 0
+  else
+    cd "$build_dir" || return
+    find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +
+    monitor "pnpm-install" pnpm install --prod --frozen-lockfile
+    meta_set "skipped-prune" "false"
+  fi
+}
+
 yarn_2_install() {
   local build_dir=${1:-}
 
