@@ -171,7 +171,7 @@ pnpm_prune_devdependencies() {
     return 0
   else
     cd "$build_dir" || return
-    monitor "pnpm-install" pnpm prune --prod --frozen-lockfile
+    monitor "pnpm-install" pnpm prune --prod
     meta_set "skipped-prune" "false"
   fi
 }
