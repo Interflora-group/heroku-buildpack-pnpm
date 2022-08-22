@@ -34,7 +34,7 @@ run_if_present() {
         monitor "${script_name}-script" yarn run "$script_name"
       fi
     elif $PNPM; then
-      echo "Running $script_name"
+      echo "Running $script_name (pnpm)"
       monitor "${script_name}-script" pnpm run "$script_name" --if-present
     else
       echo "Running $script_name"
