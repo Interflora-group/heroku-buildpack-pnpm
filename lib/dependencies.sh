@@ -171,8 +171,7 @@ pnpm_prune_devdependencies() {
     return 0
   else
     cd "$build_dir" || return
-    find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +
-    monitor "pnpm-install" pnpm install --prod --frozen-lockfile
+    monitor "pnpm-install" pnpm prune --prod --frozen-lockfile
     meta_set "skipped-prune" "false"
   fi
 }
