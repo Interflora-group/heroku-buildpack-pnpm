@@ -186,11 +186,19 @@ if [[ -z "$USE_NPM_INSTALL" ]] && [[ $(features_get_with_blank "use-npm-ci") == 
 fi
 
 install_bins() {
-  local node_engine npm_engine yarn_engine npm_version node_version
+  local node_engine npm_engine yarn_engine pnpm_engine node_version
 
   node_engine=$(read_json "$BUILD_DIR/package.json" ".engines.node")
   npm_engine=$(read_json "$BUILD_DIR/package.json" ".engines.npm")
   yarn_engine=$(read_json "$BUILD_DIR/package.json" ".engines.yarn")
+  pnpm_engine=$(read_json "$BUILD_DIR/package.json" ".engines.pnpm")
+  
+  
+  # Respect PNPM_VERSION env variable if defined
+  if [ -n "$PNPM_VERSION" ]; then
+    pnpm_engine="$PNPM_VERSION"
+  fi
+
 
   if [[ "$YARN_2" == "true" && -n "$yarn_engine" ]]; then
     warn "You don't need to specify Yarn engine. Heroku will install the latest Yarn 1.x, so that per project version can be used. More information here: https://yarnpkg.com/getting-started/install#global-install"
@@ -200,11 +208,15 @@ install_bins() {
   meta_set "node-version-request" "$node_engine"
   meta_set "npm-version-request" "$npm_engine"
   meta_set "yarn-version-request" "$yarn_engine"
+  meta_set "pnpm-version-request" "$pnpm_engine"
 
   echo "engines.node (package.json):  ${node_engine:-unspecified}"
   echo "engines.npm (package.json):   ${npm_engine:-unspecified (use default)}"
   if $YARN || [ -n "$yarn_engine" ]; then
     echo "engines.yarn (package.json):  ${yarn_engine:-unspecified (use default)}"
+  fi
+  if $PNPM || [ -n "$pnpm_engine" ]; then
+    echo "engines.pnpm (package.json):  ${pnpm_engine:-unspecified (use default)}"
   fi
   echo ""
 
@@ -220,11 +232,17 @@ install_bins() {
   mcount "version.node.$node_version"
   meta_set "node-version" "$node_version"
 
-  if $PNPM; then
+  # Download pnpm if there is a pnpm-lock.yaml file or if the user
+  # has specified a version of pnpm under "engines". We'll still
+  # only install using pnpm if there is a pnpm-lock.yaml file
+  if $PNPM || [ -n "$pnpm_engine" ]; then
     meta_set "build-step" "install-pnpm"
-    echo "-----> Install pnpm"
-    curl -sL https://unpkg.com/@pnpm/self-installer | node
+    echo "Downloading and installing pnpm..."
+    if ! npm install --global "pnpm@${pnpm_engine:latest}" 2>@1>/dev/null; then
+      echo "Unable to install pnpm ${pnpm_engine:latest}; does it exist?" && false
+    fi
     pnpm config set store-dir "$CACHE_DIR"/.pnpm-store
+    echo "pnpm $(pnpm --version) installed"
   fi
 
   # Download yarn if there is a yarn.lock file or if the user
